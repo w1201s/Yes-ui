@@ -258,8 +258,8 @@ function Library.new(config)
 		Title = "UI Library",
 		Description = "discord.gg/BH6pE7jesa",
 		Keybind = Enum.KeyCode.LeftControl,
-		Logo = "",
-		Size = UDim2.new(0.100000001, 445, 0.100000001, 315)
+		Logo = "rbxassetid://14288071474",
+		Size = UDim2.new(0, 512, 0, 512)
 	});
 
 	local TweenInfo1 = TweenInfo.new(1,Enum.EasingStyle.Quint,Enum.EasingDirection.InOut);
