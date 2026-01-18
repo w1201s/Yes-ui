@@ -1,0 +1,20 @@
+
+local UILib = loadstring(game:HttpGet("https://github.com/w1201s/Yes-ui/raw/refs/heads/main/uno%20ui"))()
+
+local UI = UILib:CreateWindow("My UI")
+
+local Main = UI:CreateTab("Main")
+local Farm = UI:CreateTab("Farm")
+
+Main:AddLabel("Welcome")
+Main:AddButton("Print", function()
+    print("Hello")
+end)
+
+Farm:AddToggle("Auto Farm", false, function(v)
+    print(v)
+end)
+
+Farm:AddSlider("Speed", 1, 100, 20, function(v)
+    print(v)
+end)
