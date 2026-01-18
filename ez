@@ -1,7 +1,7 @@
 
 local UILib = loadstring(game:HttpGet("https://github.com/w1201s/Yes-ui/raw/refs/heads/main/uno%20ui"))()
 
-local UI = UILib:CreateWindow("My UI")
+local UI = UILib:CreateWindow("My UIx")
 
 local Main = UI:CreateTab("Main")
 local Farm = UI:CreateTab("Farm")
