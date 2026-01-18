@@ -1,5 +1,6 @@
--- Simple Modern Roblox UI Library 2026 (Updated: + Note + Notify)
--- Minimize จำตำแหน่ง, ลาก+ปรับขนาดได้, Elements ครบ, แก้บัค tab ว่าง
+-- Simple Modern Roblox UI Library (All-in-One)  
+-- ไม่มีตัวอย่างใช้งานในไฟล์ (ตามที่ขอ)  
+-- Minimize tab จำตำแหน่งได้, ลากได้ทั้ง PC/Mobile, ปรับขนาดได้
 
 local UI_LIB = {}
 local Players = game:GetService("Players")
@@ -8,387 +9,435 @@ local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
-local UI_NAME = "SimpleUILibGui_Final"
 
+local UI_NAME = "SimpleUILibGui_v3"
+
+-- สีธีม
 local Colors = {
-    Background  = Color3.fromRGB(28, 28, 38),
-    Titlebar    = Color3.fromRGB(20, 20, 30),
-    TabBar      = Color3.fromRGB(40, 40, 55),
-    TabActive   = Color3.fromRGB(65, 65, 90),
-    Button      = Color3.fromRGB(55, 55, 75),
-    ButtonHover = Color3.fromRGB(75, 75, 100),
-    ToggleOff   = Color3.fromRGB(70, 70, 85),
-    ToggleOn    = Color3.fromRGB(60, 180, 90),
-    Text        = Color3.fromRGB(245, 245, 255),
-    TextDim     = Color3.fromRGB(180, 180, 200),
-    Stroke      = Color3.fromRGB(70, 70, 90),
-    Separator   = Color3.fromRGB(75, 75, 95),
-    NotifyBg    = Color3.fromRGB(40, 40, 60),
-    NotifyAccent= Color3.fromRGB(100, 180, 100)
+    Background = Color3.fromRGB(30, 30, 40),
+    Titlebar   = Color3.fromRGB(20, 20, 30),
+    TabBar     = Color3.fromRGB(45, 45, 55),
+    TabActive  = Color3.fromRGB(65, 65, 85),
+    Button     = Color3.fromRGB(50, 50, 65),
+    ButtonHover= Color3.fromRGB(70, 70, 90),
+    ToggleOff  = Color3.fromRGB(60, 60, 70),
+    ToggleOn   = Color3.fromRGB(50, 170, 80),
+    Text       = Color3.fromRGB(240, 240, 255),
+    Stroke     = Color3.fromRGB(60, 60, 75),
+    Label      = Color3.fromRGB(180, 180, 200),
+    Separator  = Color3.fromRGB(70, 70, 80)
 }
 
+-- ลบ UI เก่าถ้ามี (Singleton)
 if playerGui:FindFirstChild(UI_NAME) then
     playerGui[UI_NAME]:Destroy()
 end
 
-local function MakeDraggable(target, obj, onEnd)
-    local dragging, start, pos = false
-    target.InputBegan:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+-- ฟังก์ชันลาก (Draggable) + จำตำแหน่งเมื่อปล่อย
+local function MakeDraggable(target, objectToMove, onDragEndCallback)
+    local dragging, dragInput, dragStart, startPos = false
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        objectToMove.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+
+    target.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
-            start = i.Position
-            pos = obj.Position
-            i.Changed:Connect(function()
-                if i.UserInputState == Enum.UserInputState.End then
+            dragStart = input.Position
+            startPos = objectToMove.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
                     dragging = false
-                    if onEnd then onEnd(obj.Position) end
+                    if onDragEndCallback then
+                        onDragEndCallback(objectToMove.Position)
+                    end
                 end
             end)
         end
     end)
-    target.InputChanged:Connect(function(i)
-        if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-            local delta = i.Position - start
-            obj.Position = UDim2.new(pos.X.Scale, pos.X.Offset + delta.X, pos.Y.Scale, pos.Y.Offset + delta.Y)
+
+    target.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            update(input)
         end
     end)
 end
 
+-- ฟังก์ชันปรับขนาด (Resizable)
 local function MakeResizable(resizer, frame)
-    local resizing = false
-    resizer.InputBegan:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+    local resizing, resizeInput, resizeStart, startSize = false
+
+    local function update(input)
+        local delta = input.Position - resizeStart
+        local newX = math.max(280, startSize.X.Offset + delta.X)
+        local newY = math.max(220, startSize.Y.Offset + delta.Y)
+        frame.Size = UDim2.new(0, newX, 0, newY)
+    end
+
+    resizer.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             resizing = true
-            local start = i.Position
-            local startSize = frame.Size
-            i.Changed:Connect(function()
-                if i.UserInputState == Enum.UserInputState.End then resizing = false end
-            end)
-            resizer.InputChanged:Connect(function(i2)
-                if resizing and (i2.UserInputType == Enum.UserInputType.MouseMovement or i2.UserInputType == Enum.UserInputType.Touch) then
-                    local delta = i2.Position - start
-                    frame.Size = UDim2.new(0, math.max(300, startSize.X.Offset + delta.X), 0, math.max(220, startSize.Y.Offset + delta.Y))
+            resizeStart = input.Position
+            startSize = frame.Size
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    resizing = false
                 end
             end)
         end
     end)
-end
 
--- ฟังก์ชัน Notify (แจ้งเตือน popup)
-function UI_LIB:Notify(title, message, duration)
-    duration = duration or 4
+    resizer.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            resizeInput = input
+        end
+    end)
 
-    local notifyGui = Instance.new("ScreenGui")
-    notifyGui.Name = "NotifyGui"
-    notifyGui.ResetOnSpawn = false
-    notifyGui.Parent = playerGui
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 300, 0, 80)
-    frame.Position = UDim2.new(1, -320, 1, -100)
-    frame.BackgroundColor3 = Colors.NotifyBg
-    frame.BorderSizePixel = 0
-    frame.Parent = notifyGui
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
-
-    local accent = Instance.new("Frame")
-    accent.Size = UDim2.new(1,0,0,4)
-    accent.BackgroundColor3 = Colors.NotifyAccent
-    accent.BorderSizePixel = 0
-    accent.Parent = frame
-
-    local tTitle = Instance.new("TextLabel")
-    tTitle.Size = UDim2.new(1,-10,0,30)
-    tTitle.Position = UDim2.new(0,5,0,5)
-    tTitle.BackgroundTransparency = 1
-    tTitle.Text = title or "Notification"
-    tTitle.TextColor3 = Colors.Text
-    tTitle.TextSize = 16
-    tTitle.Font = Enum.Font.GothamBold
-    tTitle.TextXAlignment = Enum.TextXAlignment.Left
-    tTitle.Parent = frame
-
-    local tMsg = Instance.new("TextLabel")
-    tMsg.Size = UDim2.new(1,-10,0,40)
-    tMsg.Position = UDim2.new(0,5,0,35)
-    tMsg.BackgroundTransparency = 1
-    tMsg.Text = message or ""
-    tMsg.TextColor3 = Colors.TextDim
-    tMsg.TextSize = 14
-    tMsg.Font = Enum.Font.Gotham
-    tMsg.TextXAlignment = Enum.TextXAlignment.Left
-    tMsg.TextWrapped = true
-    tMsg.Parent = frame
-
-    -- Animation เข้า-ออก
-    frame.Position = UDim2.new(1, 20, 1, -100)
-    TweenService:Create(frame, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {Position = UDim2.new(1, -320, 1, -100)}):Play()
-
-    task.delay(duration, function()
-        TweenService:Create(frame, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {Position = UDim2.new(1, 20, 1, -100)}):Play()
-        task.delay(0.6, function()
-            notifyGui:Destroy()
-        end)
+    UserInputService.InputChanged:Connect(function(input)
+        if resizing and input == resizeInput then
+            update(input)
+        end
     end)
 end
 
 function UI_LIB:CreateWindow(title)
-    local screen = Instance.new("ScreenGui")
-    screen.Name = UI_NAME
-    screen.ResetOnSpawn = false
-    screen.Parent = playerGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = UI_NAME
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = playerGui
 
     local main = Instance.new("Frame")
-    main.Size = UDim2.new(0, 520, 0, 400)
-    main.Position = UDim2.new(0.5, -260, 0.5, -200)
+    main.Name = "Main"
+    main.Size = UDim2.new(0, 480, 0, 380)
+    main.Position = UDim2.new(0.5, -240, 0.5, -190)
     main.BackgroundColor3 = Colors.Background
-    main.ClipsDescendants = true
-    main.Parent = screen
+    main.BorderSizePixel = 0
+    main.Parent = screenGui
 
-    Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
-    Instance.new("UIStroke", main).Color = Colors.Stroke
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = main
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Colors.Stroke
+    stroke.Thickness = 1.5
+    stroke.Parent = main
 
     -- Titlebar
-    local titlebar = Instance.new("Frame")
-    titlebar.Size = UDim2.new(1,0,0,36)
-    titlebar.BackgroundColor3 = Colors.Titlebar
-    titlebar.Parent = main
-    Instance.new("UICorner", titlebar).CornerRadius = UDim.new(0, 12)
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1,0,0,34)
+    titleBar.BackgroundColor3 = Colors.Titlebar
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = main
 
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1,-100,1,0)
-    nameLabel.Position = UDim2.new(0,14,0,0)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = title or "UI Library"
-    nameLabel.TextColor3 = Colors.Text
-    nameLabel.TextSize = 16
-    nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.Parent = titlebar
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 10)
+    titleCorner.Parent = titleBar
 
-    -- Close & Minimize
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0,36,0,36)
-    closeBtn.Position = UDim2.new(1,-38,0,0)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
-    closeBtn.Text = "✕"
-    closeBtn.TextColor3 = Color3.new(1,1,1)
-    closeBtn.Parent = titlebar
-    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0,10)
-    closeBtn.MouseButton1Click:Connect(function() screen:Destroy() end)
+    local titleText = Instance.new("TextLabel")
+    titleText.Size = UDim2.new(1,-80,1,0)
+    titleText.Position = UDim2.new(0,12,0,0)
+    titleText.BackgroundTransparency = 1
+    titleText.Text = title or "UI"
+    titleText.TextColor3 = Colors.Text
+    titleText.TextSize = 16
+    titleText.Font = Enum.Font.GothamBold
+    titleText.TextXAlignment = Enum.TextXAlignment.Left
+    titleText.Parent = titleBar
 
-    local minBtn = Instance.new("TextButton")
-    minBtn.Size = UDim2.new(0,36,0,36)
-    minBtn.Position = UDim2.new(1,-76,0,0)
-    minBtn.BackgroundColor3 = Color3.fromRGB(70,70,90)
-    minBtn.Text = "−"
-    minBtn.TextColor3 = Colors.Text
-    minBtn.Parent = titlebar
-    Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0,10)
+    -- Close Button
+    local close = Instance.new("TextButton")
+    close.Size = UDim2.new(0,34,0,34)
+    close.Position = UDim2.new(1,-34,0,0)
+    close.BackgroundColor3 = Color3.fromRGB(190, 50, 50)
+    close.Text = "✕"
+    close.TextColor3 = Color3.new(1,1,1)
+    close.TextSize = 16
+    close.Font = Enum.Font.SourceSansBold
+    close.BorderSizePixel = 0
+    close.Parent = titleBar
 
-    -- Content
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1,0,1,-36)
-    container.Position = UDim2.new(0,0,0,36)
-    container.BackgroundTransparency = 1
-    container.Parent = main
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 8)
+    closeCorner.Parent = close
 
-    local leftBar = Instance.new("Frame")
-    leftBar.Size = UDim2.new(0,150,1,0)
-    leftBar.BackgroundColor3 = Colors.TabBar
-    leftBar.Parent = container
+    close.MouseButton1Click:Connect(function()
+        screenGui:Destroy()
+    end)
 
-    local rightArea = Instance.new("ScrollingFrame")
-    rightArea.Size = UDim2.new(1,-150,1,0)
-    rightArea.Position = UDim2.new(0,150,0,0)
-    rightArea.BackgroundTransparency = 1
-    rightArea.ScrollBarThickness = 4
-    rightArea.Parent = container
+    -- Minimize Button
+    local minimizeBtn = Instance.new("TextButton")
+    minimizeBtn.Size = UDim2.new(0,34,0,34)
+    minimizeBtn.Position = UDim2.new(1,-68,0,0)
+    minimizeBtn.BackgroundColor3 = Color3.fromRGB(60,60,80)
+    minimizeBtn.Text = "−"
+    minimizeBtn.TextColor3 = Colors.Text
+    minimizeBtn.TextSize = 20
+    minimizeBtn.Font = Enum.Font.SourceSansBold
+    minimizeBtn.BorderSizePixel = 0
+    minimizeBtn.Parent = titleBar
 
-    MakeDraggable(titlebar, main)
+    local minCorner = Instance.new("UICorner")
+    minCorner.CornerRadius = UDim.new(0, 8)
+    minCorner.Parent = minimizeBtn
 
+    -- Content Area
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1,0,1,-34)
+    content.Position = UDim2.new(0,0,0,34)
+    content.BackgroundTransparency = 1
+    content.Parent = main
+
+    local left = Instance.new("Frame")
+    left.Size = UDim2.new(0,140,1,0)
+    left.BackgroundColor3 = Colors.TabBar
+    left.BorderSizePixel = 0
+    left.Parent = content
+
+    local right = Instance.new("ScrollingFrame")
+    right.Size = UDim2.new(1,-140,1,0)
+    right.Position = UDim2.new(0,140,0,0)
+    right.BackgroundTransparency = 1
+    right.ScrollBarThickness = 4
+    right.Parent = content
+
+    MakeDraggable(titleBar, main)
+
+    -- Resizer (ล่างขวา)
     local resizer = Instance.new("Frame")
     resizer.Size = UDim2.new(0,20,0,20)
     resizer.Position = UDim2.new(1,-20,1,-20)
-    resizer.BackgroundColor3 = Color3.fromRGB(110,110,150)
+    resizer.BackgroundColor3 = Color3.fromRGB(100,100,140)
+    resizer.BorderSizePixel = 0
     resizer.Parent = main
-    Instance.new("UICorner", resizer).CornerRadius = UDim.new(0,6)
+
+    local resizerCorner = Instance.new("UICorner")
+    resizerCorner.CornerRadius = UDim.new(0,6)
+    resizerCorner.Parent = resizer
+
     MakeResizable(resizer, main)
 
-    -- Minimize
-    local miniTab = nil
-    local savedPos = UDim2.new(1, -170, 0, 50)
+    -- Minimize + จำตำแหน่ง tab
+    local minimizedTab = nil
+    local lastTabPosition = UDim2.new(1, -160, 0, 40) -- ตำแหน่งเริ่มต้น
 
     local function toggleMinimize()
         if main.Visible then
             main.Visible = false
-            miniTab = Instance.new("TextButton")
-            miniTab.Size = UDim2.new(0,150,0,40)
-            miniTab.Position = savedPos
-            miniTab.BackgroundColor3 = Colors.Titlebar
-            miniTab.Text = (title or "UI") .. " ▸"
-            miniTab.TextColor3 = Colors.Text
-            miniTab.TextSize = 15
-            miniTab.Font = Enum.Font.GothamBold
-            miniTab.Parent = screen
-            Instance.new("UICorner", miniTab).CornerRadius = UDim.new(0,10)
-            MakeDraggable(miniTab, miniTab, function(p) savedPos = p end)
-            miniTab.MouseButton1Click:Connect(toggleMinimize)
+
+            minimizedTab = Instance.new("TextButton")
+            minimizedTab.Size = UDim2.new(0, 140, 0, 38)
+            minimizedTab.Position = lastTabPosition
+            minimizedTab.BackgroundColor3 = Colors.Titlebar
+            minimizedTab.Text = (title or "UI") .. "  ►"
+            minimizedTab.TextColor3 = Colors.Text
+            minimizedTab.TextSize = 15
+            minimizedTab.Font = Enum.Font.GothamSemibold
+            minimizedTab.BorderSizePixel = 0
+            minimizedTab.Parent = screenGui
+
+            local tabCorner = Instance.new("UICorner")
+            tabCorner.CornerRadius = UDim.new(0, 8)
+            tabCorner.Parent = minimizedTab
+
+            MakeDraggable(minimizedTab, minimizedTab, function(newPos)
+                lastTabPosition = newPos -- บันทึกตำแหน่งใหม่
+            end)
+
+            minimizedTab.MouseButton1Click:Connect(toggleMinimize)
         else
             main.Visible = true
-            if miniTab then miniTab:Destroy() miniTab = nil end
+            if minimizedTab then
+                minimizedTab:Destroy()
+                minimizedTab = nil
+            end
         end
     end
-    minBtn.MouseButton1Click:Connect(toggleMinimize)
 
+    minimizeBtn.MouseButton1Click:Connect(toggleMinimize)
+
+    -- API สำหรับสร้าง Window
     local Window = {}
-    local currentTab = nil
 
     function Window:AddTab(name)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1,0,0,40)
-        btn.BackgroundColor3 = Colors.TabBar
-        btn.Text = name
-        btn.TextColor3 = Colors.Text
-        btn.TextSize = 15
-        btn.Font = Enum.Font.GothamSemibold
-        btn.Parent = leftBar
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
+        local tabBtn = Instance.new("TextButton")
+        tabBtn.Size = UDim2.new(1,0,0,38)
+        tabBtn.BackgroundColor3 = Colors.TabBar
+        tabBtn.Text = name
+        tabBtn.TextColor3 = Colors.Text
+        tabBtn.TextSize = 15
+        tabBtn.Font = Enum.Font.GothamSemibold
+        tabBtn.BorderSizePixel = 0
+        tabBtn.Parent = left
 
-        local page = Instance.new("Frame")
-        page.Size = UDim2.new(1,0,1,0)
-        page.BackgroundTransparency = 1
-        page.Visible = false
-        page.Parent = rightArea
+        local tabCorner = Instance.new("UICorner")
+        tabCorner.CornerRadius = UDim.new(0, 8)
+        tabCorner.Parent = tabBtn
 
-        local layout = Instance.new("UIListLayout")
-        layout.Padding = UDim.new(0,8)
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Parent = page
+        local tabPage = Instance.new("Frame")
+        tabPage.Size = UDim2.new(1,0,1,0)
+        tabPage.BackgroundTransparency = 1
+        tabPage.Visible = false
+        tabPage.Parent = right
+
+        local list = Instance.new("UIListLayout")
+        list.Padding = UDim.new(0,8)
+        list.SortOrder = Enum.SortOrder.LayoutOrder
+        list.Parent = tabPage
 
         local padding = Instance.new("UIPadding")
-        padding.PaddingAll = UDim.new(0,14)
-        padding.Parent = page
+        padding.PaddingLeft = UDim.new(0,14)
+        padding.PaddingRight = UDim.new(0,14)
+        padding.PaddingTop = UDim.new(0,14)
+        padding.PaddingBottom = UDim.new(0,14)
+        padding.Parent = tabPage
 
-        btn.MouseButton1Click:Connect(function()
-            if currentTab then currentTab.Visible = false end
-            for _, b in leftBar:GetChildren() do
-                if b:IsA("TextButton") then b.BackgroundColor3 = Colors.TabBar end
+        tabBtn.MouseButton1Click:Connect(function()
+            for _, page in right:GetChildren() do
+                if page:IsA("Frame") then page.Visible = false end
             end
-            page.Visible = true
-            btn.BackgroundColor3 = Colors.TabActive
-            currentTab = page
+            tabPage.Visible = true
+
+            for _, btn in left:GetChildren() do
+                if btn:IsA("TextButton") then
+                    btn.BackgroundColor3 = Colors.TabBar
+                end
+            end
+            tabBtn.BackgroundColor3 = Colors.TabActive
         end)
 
         -- เปิด tab แรกอัตโนมัติ
-        if not currentTab then
-            page.Visible = true
-            btn.BackgroundColor3 = Colors.TabActive
-            currentTab = page
+        if #right:GetChildren() <= 1 then
+            tabPage.Visible = true
+            tabBtn.BackgroundColor3 = Colors.TabActive
         end
 
         local Tab = {}
 
-        -- Elements (ครบทุกอย่าง)
-        function Tab:AddButton(text, callback) 
-            local b = Instance.new("TextButton")
-            b.Size = UDim2.new(1,0,0,38)
-            b.BackgroundColor3 = Colors.Button
-            b.Text = text
-            b.TextColor3 = Colors.Text
-            b.TextSize = 15
-            b.Font = Enum.Font.GothamSemibold
-            b.Parent = page
-            Instance.new("UICorner", b).CornerRadius = UDim.new(0,8)
-            b.MouseButton1Click:Connect(callback or function() end)
-            b.MouseEnter:Connect(function() TweenService:Create(b, TweenInfo.new(0.2), {BackgroundColor3 = Colors.ButtonHover}):Play() end)
-            b.MouseLeave:Connect(function() TweenService:Create(b, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Button}):Play() end)
-            return b
+        function Tab:AddButton(text, callback)
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1,0,0,38)
+            btn.BackgroundColor3 = Colors.Button
+            btn.Text = text
+            btn.TextColor3 = Colors.Text
+            btn.TextSize = 15
+            btn.Font = Enum.Font.GothamSemibold
+            btn.Parent = tabPage
+
+            local c = Instance.new("UICorner")
+            c.CornerRadius = UDim.new(0,8)
+            c.Parent = btn
+
+            btn.MouseButton1Click:Connect(callback or function() end)
+
+            btn.MouseEnter:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.ButtonHover}):Play()
+            end)
+            btn.MouseLeave:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Button}):Play()
+            end)
+
+            return btn
         end
 
-        function Tab:AddToggle(text, default, callback) 
-            -- (โค้ด toggle เดิมเหมือนด้านบน - ย่อเพื่อความสั้น)
-            local f = Instance.new("Frame")
-            f.Size = UDim2.new(1,0,0,36)
-            f.BackgroundTransparency = 1
-            f.Parent = page
-            -- ... (เพิ่มโค้ด toggle เหมือนเวอร์ชันก่อนหน้าได้เลย)
-            -- หรือคัดลอกจากข้อความก่อนหน้า
+        function Tab:AddToggle(text, default, callback)
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1,0,0,36)
+            frame.BackgroundTransparency = 1
+            frame.Parent = tabPage
+
+            local lbl = Instance.new("TextLabel")
+            lbl.Size = UDim2.new(0.7,0,1,0)
+            lbl.BackgroundTransparency = 1
+            lbl.Text = text
+            lbl.TextColor3 = Colors.Text
+            lbl.TextSize = 15
+            lbl.Font = Enum.Font.Gotham
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.Parent = frame
+
+            local toggle = Instance.new("Frame")
+            toggle.Size = UDim2.new(0,46,0,24)
+            toggle.Position = UDim2.new(1,-50,0.5,-12)
+            toggle.BackgroundColor3 = default and Colors.ToggleOn or Colors.ToggleOff
+            toggle.Parent = frame
+
+            local tc = Instance.new("UICorner")
+            tc.CornerRadius = UDim.new(1,0)
+            tc.Parent = toggle
+
+            local circle = Instance.new("Frame")
+            circle.Size = UDim2.new(0,20,0,20)
+            circle.Position = default and UDim2.new(1,-22,0.5,-10) or UDim2.new(0,2,0.5,-10)
+            circle.BackgroundColor3 = Color3.new(1,1,1)
+            circle.Parent = toggle
+
+            local cc = Instance.new("UICorner")
+            cc.CornerRadius = UDim.new(1,0)
+            cc.Parent = circle
+
+            local state = default
+
+            local function updateToggle()
+                TweenService:Create(toggle, TweenInfo.new(0.25), {
+                    BackgroundColor3 = state and Colors.ToggleOn or Colors.ToggleOff
+                }):Play()
+
+                TweenService:Create(circle, TweenInfo.new(0.25, Enum.EasingStyle.Quint), {
+                    Position = state and UDim2.new(1,-22,0.5,-10) or UDim2.new(0,2,0.5,-10)
+                }):Play()
+
+                if callback then callback(state) end
+            end
+
+            toggle.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    state = not state
+                    updateToggle()
+                end
+            end)
+
+            updateToggle()
+
+            return {
+                Toggle = function(v) state = v; updateToggle() end,
+                Get = function() return state end
+            }
         end
 
-        function Tab:AddLabel(text) 
-            local l = Instance.new("TextLabel")
-            l.Size = UDim2.new(1,0,0,30)
-            l.BackgroundTransparency = 1
-            l.Text = text
-            l.TextColor3 = Colors.TextDim
-            l.TextSize = 14
-            l.TextXAlignment = Enum.TextXAlignment.Left
-            l.Parent = page
-            return l
+        function Tab:AddLabel(text)
+            local lbl = Instance.new("TextLabel")
+            lbl.Size = UDim2.new(1,0,0,28)
+            lbl.BackgroundTransparency = 1
+            lbl.Text = text
+            lbl.TextColor3 = Colors.Label
+            lbl.TextSize = 14
+            lbl.Font = Enum.Font.Gotham
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.Parent = tabPage
+            return lbl
         end
 
         function Tab:AddSeparator()
-            local s = Instance.new("Frame")
-            s.Size = UDim2.new(1,0,0,1)
-            s.BackgroundColor3 = Colors.Separator
-            s.BorderSizePixel = 0
-            s.Parent = page
-            return s
-        end
-
-        function Tab:AddTextBox(placeholder, callback)
-            local box = Instance.new("TextBox")
-            box.Size = UDim2.new(1,0,0,36)
-            box.BackgroundColor3 = Colors.Button
-            box.PlaceholderText = placeholder or "Enter..."
-            box.Text = ""
-            box.TextColor3 = Colors.Text
-            box.TextSize = 15
-            box.Parent = page
-            Instance.new("UICorner", box).CornerRadius = UDim.new(0,8)
-            box.FocusLost:Connect(function(enter)
-                if enter and callback then callback(box.Text) end
-            end)
-            return box
-        end
-
-        function Tab:AddSlider(text, min, max, default, callback)
-            -- (โค้ด slider เดิม - ย่อ)
-            -- คัดลอกจากเวอร์ชันก่อนหน้าได้เลย
-        end
-
-        -- Element ใหม่: Note / Description (กล่องข้อความอธิบาย)
-        function Tab:AddNote(title, description)
-            local noteFrame = Instance.new("Frame")
-            noteFrame.Size = UDim2.new(1,0,0,100)
-            noteFrame.BackgroundColor3 = Colors.Button
-            noteFrame.BorderSizePixel = 0
-            noteFrame.Parent = page
-
-            Instance.new("UICorner", noteFrame).CornerRadius = UDim.new(0,8)
-
-            local titleLbl = Instance.new("TextLabel")
-            titleLbl.Size = UDim2.new(1,0,0,30)
-            titleLbl.BackgroundTransparency = 1
-            titleLbl.Text = title or "Note"
-            titleLbl.TextColor3 = Colors.Text
-            titleLbl.TextSize = 16
-            titleLbl.Font = Enum.Font.GothamBold
-            titleLbl.Parent = noteFrame
-
-            local descLbl = Instance.new("TextLabel")
-            descLbl.Size = UDim2.new(1,0,0,60)
-            descLbl.Position = UDim2.new(0,0,0,30)
-            descLbl.BackgroundTransparency = 1
-            descLbl.Text = description or ""
-            descLbl.TextColor3 = Colors.TextDim
-            descLbl.TextSize = 14
-            descLbl.TextWrapped = true
-            descLbl.TextXAlignment = Enum.TextXAlignment.Left
-            descLbl.Parent = noteFrame
-
-            return noteFrame
+            local sep = Instance.new("Frame")
+            sep.Size = UDim2.new(1,0,0,1)
+            sep.BackgroundColor3 = Colors.Separator
+            sep.BorderSizePixel = 0
+            sep.Parent = tabPage
+            return sep
         end
 
         return Tab
