@@ -1,16 +1,18 @@
---// FIXED MOBILE UI LIB
+--// SIMPLE UI LIB - STABLE VERSION
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local Player = Players.LocalPlayer
 
-if Player.PlayerGui:FindFirstChild("FixedUILib") then
-    Player.PlayerGui.FixedUILib:Destroy()
+-- clear old
+if Player.PlayerGui:FindFirstChild("SimpleStableUI") then
+    Player.PlayerGui.SimpleStableUI:Destroy()
 end
 
 local UILib = {}
 UILib.__index = UILib
 
+-- helpers
 local function corner(o,r)
     local c = Instance.new("UICorner")
     c.CornerRadius = UDim.new(0,r or 6)
@@ -20,6 +22,7 @@ end
 local function drag(frame, handle)
     handle = handle or frame
     local dragging, startPos, startInput
+
     handle.InputBegan:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1
         or i.UserInputType == Enum.UserInputType.Touch then
@@ -28,12 +31,14 @@ local function drag(frame, handle)
             startPos = frame.Position
         end
     end)
+
     UIS.InputEnded:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1
         or i.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
+
     UIS.InputChanged:Connect(function(i)
         if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement
         or i.UserInputType == Enum.UserInputType.Touch) then
@@ -46,19 +51,21 @@ local function drag(frame, handle)
     end)
 end
 
+-- WINDOW
 function UILib:CreateWindow(title)
     local self = setmetatable({}, UILib)
+    self.Tabs = {}
+    self.TabCount = 0
 
     local Gui = Instance.new("ScreenGui", Player.PlayerGui)
-    Gui.Name = "FixedUILib"
+    Gui.Name = "SimpleStableUI"
     Gui.ResetOnSpawn = false
 
     local Main = Instance.new("Frame", Gui)
     Main.Size = UDim2.new(0,420,0,300)
     Main.Position = UDim2.new(0.5,-210,0.5,-150)
-    Main.BackgroundColor3 = Color3.fromRGB(28,28,28)
+    Main.BackgroundColor3 = Color3.fromRGB(30,30,30)
     Main.BorderSizePixel = 0
-    Main.ZIndex = 1
     corner(Main,10)
 
     -- TOP BAR
@@ -66,12 +73,11 @@ function UILib:CreateWindow(title)
     Top.Size = UDim2.new(1,0,0,36)
     Top.BackgroundColor3 = Color3.fromRGB(45,45,45)
     Top.BorderSizePixel = 0
-    Top.ZIndex = 10
 
     drag(Main, Top)
 
     local Title = Instance.new("TextLabel", Top)
-    Title.Size = UDim2.new(1,-90,1,0)
+    Title.Size = UDim2.new(1,-80,1,0)
     Title.Position = UDim2.new(0,10,0,0)
     Title.BackgroundTransparency = 1
     Title.Text = title
@@ -79,7 +85,6 @@ function UILib:CreateWindow(title)
     Title.Font = Enum.Font.SourceSansBold
     Title.TextSize = 18
     Title.TextXAlignment = Left
-    Title.ZIndex = 11
 
     local Close = Instance.new("TextButton", Top)
     Close.Size = UDim2.new(0,28,0,22)
@@ -88,7 +93,6 @@ function UILib:CreateWindow(title)
     Close.BackgroundColor3 = Color3.fromRGB(140,50,50)
     Close.TextColor3 = Color3.new(1,1,1)
     Close.BorderSizePixel = 0
-    Close.ZIndex = 11
     corner(Close)
 
     local Min = Instance.new("TextButton", Top)
@@ -98,7 +102,6 @@ function UILib:CreateWindow(title)
     Min.BackgroundColor3 = Color3.fromRGB(80,80,80)
     Min.TextColor3 = Color3.new(1,1,1)
     Min.BorderSizePixel = 0
-    Min.ZIndex = 11
     corner(Min)
 
     -- TAB BAR
@@ -106,13 +109,10 @@ function UILib:CreateWindow(title)
     TabBar.Size = UDim2.new(1,-10,0,28)
     TabBar.Position = UDim2.new(0,5,0,40)
     TabBar.BackgroundTransparency = 1
-    TabBar.ZIndex = 9
 
     local TabLayout = Instance.new("UIListLayout", TabBar)
     TabLayout.FillDirection = Enum.FillDirection.Horizontal
     TabLayout.Padding = UDim.new(0,6)
-
-    self.Pages = {}
 
     -- FLOAT BUTTON
     local Float = Instance.new("TextButton", Gui)
@@ -123,9 +123,7 @@ function UILib:CreateWindow(title)
     Float.BackgroundColor3 = Color3.fromRGB(45,45,45)
     Float.TextColor3 = Color3.new(1,1,1)
     Float.BorderSizePixel = 0
-    Float.ZIndex = 20
     corner(Float,10)
-
     drag(Float)
 
     Min.MouseButton1Click:Connect(function()
@@ -142,14 +140,16 @@ function UILib:CreateWindow(title)
         Gui:Destroy()
     end)
 
+    -- CREATE TAB
     function self:CreateTab(name)
+        self.TabCount += 1
+
         local TabBtn = Instance.new("TextButton", TabBar)
         TabBtn.Size = UDim2.new(0,90,1,0)
         TabBtn.Text = name
         TabBtn.BackgroundColor3 = Color3.fromRGB(65,65,65)
         TabBtn.TextColor3 = Color3.new(1,1,1)
         TabBtn.BorderSizePixel = 0
-        TabBtn.ZIndex = 10
         corner(TabBtn)
 
         local Page = Instance.new("Frame", Main)
@@ -157,22 +157,24 @@ function UILib:CreateWindow(title)
         Page.Position = UDim2.new(0,5,0,72)
         Page.BackgroundTransparency = 1
         Page.Visible = false
-        Page.ZIndex = 5
 
         local Layout = Instance.new("UIListLayout", Page)
         Layout.Padding = UDim.new(0,6)
 
-        self.Pages[name] = Page
+        self.Tabs[name] = Page
 
         TabBtn.MouseButton1Click:Connect(function()
-            for _,p in pairs(self.Pages) do p.Visible = false end
+            for _,p in pairs(self.Tabs) do
+                p.Visible = false
+            end
             Page.Visible = true
         end)
 
-        if next(self.Pages) == Page then
+        if self.TabCount == 1 then
             Page.Visible = true
         end
 
+        -- ELEMENT API
         local Tab = {}
 
         function Tab:AddButton(text, cb)
@@ -182,21 +184,19 @@ function UILib:CreateWindow(title)
             b.BackgroundColor3 = Color3.fromRGB(75,75,75)
             b.TextColor3 = Color3.new(1,1,1)
             b.BorderSizePixel = 0
-            b.ZIndex = 6
             corner(b)
             b.MouseButton1Click:Connect(function()
                 if cb then cb() end
             end)
         end
 
-        function Tab:AddToggle(text, def, cb)
-            local state = def or false
+        function Tab:AddToggle(text, default, cb)
+            local state = default or false
             local t = Instance.new("TextButton", Page)
             t.Size = UDim2.new(1,0,0,30)
             t.BackgroundColor3 = Color3.fromRGB(75,75,75)
             t.TextColor3 = Color3.new(1,1,1)
             t.BorderSizePixel = 0
-            t.ZIndex = 6
             corner(t)
 
             local function refresh()
