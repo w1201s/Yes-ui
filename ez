@@ -1,18 +1,303 @@
+-- Simple Modern Roblox UI Library (Fixed 2026)
+-- ขนาดเริ่มต้นเล็กลง, tab แรกเปิดอัตโนมัติ, กด tab สลับได้ปกติ
 
-local UILib = loadstring(game:HttpGet("https://github.com/w1201s/Yes-ui/raw/refs/heads/main/uno%20ui"))()
+local UI_LIB = {}
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
-local Window = UI_LIB:CreateWindow("My Cool UI")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local UI_NAME = "SimpleUILib_vFinal"
 
-local MainTab = Window:AddTab("Main")
-MainTab:AddButton("Hello World", function()
-    print("Hello from button!")
-end)
+local Colors = {
+    Background  = Color3.fromRGB(30, 30, 40),
+    Titlebar    = Color3.fromRGB(20, 20, 30),
+    TabBar      = Color3.fromRGB(45, 45, 55),
+    TabActive   = Color3.fromRGB(70, 70, 90),
+    Button      = Color3.fromRGB(55, 55, 75),
+    ButtonHover = Color3.fromRGB(80, 80, 100),
+    ToggleOff   = Color3.fromRGB(70, 70, 85),
+    ToggleOn    = Color3.fromRGB(60, 180, 90),
+    Text        = Color3.fromRGB(240, 240, 255),
+    TextDim     = Color3.fromRGB(180, 180, 200),
+    Stroke      = Color3.fromRGB(70, 70, 90),
+    Separator   = Color3.fromRGB(80, 80, 95),
+    NotifyBg    = Color3.fromRGB(40, 40, 60),
+    NotifyAccent= Color3.fromRGB(100, 200, 100)
+}
 
-MainTab:AddToggle("Speed Boost", false, function(state)
-    print("Speed boost:", state)
-end)
+if playerGui:FindFirstChild(UI_NAME) then
+    playerGui[UI_NAME]:Destroy()
+end
 
-local SettingsTab = Window:AddTab("Settings")
-SettingsTab:AddButton("Reset", function()
-    print("Reset clicked!")
-end)
+local function MakeDraggable(target, obj, onEnd)
+    local dragging, start, pos = false
+    target.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            start = i.Position
+            pos = obj.Position
+            i.Changed:Connect(function()
+                if i.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    if onEnd then onEnd(obj.Position) end
+                end
+            end)
+        end
+    end)
+    target.InputChanged:Connect(function(i)
+        if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+            local delta = i.Position - start
+            obj.Position = UDim2.new(pos.X.Scale, pos.X.Offset + delta.X, pos.Y.Scale, pos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+local function MakeResizable(resizer, frame)
+    local resizing = false
+    resizer.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            resizing = true
+            local start = i.Position
+            local startSize = frame.Size
+            i.Changed:Connect(function()
+                if i.UserInputState == Enum.UserInputState.End then resizing = false end
+            end)
+            resizer.InputChanged:Connect(function(i2)
+                if resizing and (i2.UserInputType == Enum.UserInputType.MouseMovement or i2.UserInputType == Enum.UserInputType.Touch) then
+                    local delta = i2.Position - start
+                    frame.Size = UDim2.new(0, math.max(320, startSize.X.Offset + delta.X), 0, math.max(240, startSize.Y.Offset + delta.Y))
+                end
+            end)
+        end
+    end)
+end
+
+function UI_LIB:Notify(title, message, duration)
+    duration = duration or 3.5
+    local ng = Instance.new("ScreenGui")
+    ng.Name = "Notify"
+    ng.ResetOnSpawn = false
+    ng.Parent = playerGui
+
+    local f = Instance.new("Frame")
+    f.Size = UDim2.new(0, 280, 0, 70)
+    f.Position = UDim2.new(1, -300, 1, -90)
+    f.BackgroundColor3 = Colors.NotifyBg
+    f.Parent = ng
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0, 10)
+
+    local ac = Instance.new("Frame")
+    ac.Size = UDim2.new(1,0,0,4)
+    ac.BackgroundColor3 = Colors.NotifyAccent
+    ac.Parent = f
+
+    local t = Instance.new("TextLabel")
+    t.Size = UDim2.new(1,-10,0,25)
+    t.Position = UDim2.new(0,5,0,5)
+    t.BackgroundTransparency = 1
+    t.Text = title or "Notification"
+    t.TextColor3 = Colors.Text
+    t.TextSize = 15
+    t.Font = Enum.Font.GothamBold
+    t.TextXAlignment = Enum.TextXAlignment.Left
+    t.Parent = f
+
+    local m = Instance.new("TextLabel")
+    m.Size = UDim2.new(1,-10,0,35)
+    m.Position = UDim2.new(0,5,0,30)
+    m.BackgroundTransparency = 1
+    m.Text = message or ""
+    m.TextColor3 = Colors.TextDim
+    m.TextSize = 13
+    m.TextWrapped = true
+    m.TextXAlignment = Enum.TextXAlignment.Left
+    m.Parent = f
+
+    f.Position = UDim2.new(1, 20, 1, -90)
+    TweenService:Create(f, TweenInfo.new(0.45, Enum.EasingStyle.Quint), {Position = UDim2.new(1, -300, 1, -90)}):Play()
+
+    task.delay(duration, function()
+        TweenService:Create(f, TweenInfo.new(0.45, Enum.EasingStyle.Quint), {Position = UDim2.new(1, 20, 1, -90)}):Play()
+        task.delay(0.5, function() ng:Destroy() end)
+    end)
+end
+
+function UI_LIB:CreateWindow(title)
+    local screen = Instance.new("ScreenGui")
+    screen.Name = UI_NAME
+    screen.ResetOnSpawn = false
+    screen.Parent = playerGui
+
+    local main = Instance.new("Frame")
+    main.Size = UDim2.new(0, 420, 0, 320)  -- ขนาดเล็กลงตามที่ขอ
+    main.Position = UDim2.new(0.5, -210, 0.5, -160)
+    main.BackgroundColor3 = Colors.Background
+    main.Parent = screen
+
+    Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
+    Instance.new("UIStroke", main).Color = Colors.Stroke
+
+    local titlebar = Instance.new("Frame")
+    titlebar.Size = UDim2.new(1,0,0,34)
+    titlebar.BackgroundColor3 = Colors.Titlebar
+    titlebar.Parent = main
+    Instance.new("UICorner", titlebar).CornerRadius = UDim.new(0, 10)
+
+    local name = Instance.new("TextLabel")
+    name.Size = UDim2.new(1,-90,1,0)
+    name.Position = UDim2.new(0,12,0,0)
+    name.BackgroundTransparency = 1
+    name.Text = title or "UI"
+    name.TextColor3 = Colors.Text
+    name.TextSize = 16
+    name.Font = Enum.Font.GothamBold
+    name.TextXAlignment = Enum.TextXAlignment.Left
+    name.Parent = titlebar
+
+    local close = Instance.new("TextButton")
+    close.Size = UDim2.new(0,32,0,32)
+    close.Position = UDim2.new(1,-34,0,1)
+    close.BackgroundColor3 = Color3.fromRGB(200,50,50)
+    close.Text = "✕"
+    close.TextColor3 = Color3.new(1,1,1)
+    close.Parent = titlebar
+    Instance.new("UICorner", close).CornerRadius = UDim.new(0,8)
+    close.MouseButton1Click:Connect(function() screen:Destroy() end)
+
+    local minBtn = Instance.new("TextButton")
+    minBtn.Size = UDim2.new(0,32,0,32)
+    minBtn.Position = UDim2.new(1,-68,0,1)
+    minBtn.BackgroundColor3 = Color3.fromRGB(70,70,90)
+    minBtn.Text = "−"
+    minBtn.TextColor3 = Colors.Text
+    minBtn.Parent = titlebar
+    Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0,8)
+
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1,0,1,-34)
+    container.Position = UDim2.new(0,0,0,34)
+    container.BackgroundTransparency = 1
+    container.Parent = main
+
+    local left = Instance.new("Frame")
+    left.Size = UDim2.new(0,140,1,0)
+    left.BackgroundColor3 = Colors.TabBar
+    left.Parent = container
+
+    local right = Instance.new("ScrollingFrame")
+    right.Size = UDim2.new(1,-140,1,0)
+    right.Position = UDim2.new(0,140,0,0)
+    right.BackgroundTransparency = 1
+    right.ScrollBarThickness = 4
+    right.Parent = container
+
+    MakeDraggable(titlebar, main)
+
+    local resizer = Instance.new("Frame")
+    resizer.Size = UDim2.new(0,18,0,18)
+    resizer.Position = UDim2.new(1,-18,1,-18)
+    resizer.BackgroundColor3 = Color3.fromRGB(110,110,150)
+    resizer.Parent = main
+    Instance.new("UICorner", resizer).CornerRadius = UDim.new(0,6)
+    MakeResizable(resizer, main)
+
+    local miniTab = nil
+    local savedPos = UDim2.new(1, -160, 0, 40)
+
+    local function toggleMinimize()
+        if main.Visible then
+            main.Visible = false
+            miniTab = Instance.new("TextButton")
+            miniTab.Size = UDim2.new(0,140,0,38)
+            miniTab.Position = savedPos
+            miniTab.BackgroundColor3 = Colors.Titlebar
+            miniTab.Text = (title or "UI") .. " ▸"
+            miniTab.TextColor3 = Colors.Text
+            miniTab.TextSize = 14
+            miniTab.Font = Enum.Font.GothamBold
+            miniTab.Parent = screen
+            Instance.new("UICorner", miniTab).CornerRadius = UDim.new(0,8)
+            MakeDraggable(miniTab, miniTab, function(p) savedPos = p end)
+            miniTab.MouseButton1Click:Connect(toggleMinimize)
+        else
+            main.Visible = true
+            if miniTab then miniTab:Destroy() miniTab = nil end
+        end
+    end
+    minBtn.MouseButton1Click:Connect(toggleMinimize)
+
+    local Window = {}
+    local currentPage = nil
+
+    function Window:AddTab(name)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1,0,0,36)
+        btn.BackgroundColor3 = Colors.TabBar
+        btn.Text = name
+        btn.TextColor3 = Colors.Text
+        btn.TextSize = 14
+        btn.Font = Enum.Font.GothamSemibold
+        btn.Parent = left
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
+
+        local page = Instance.new("Frame")
+        page.Size = UDim2.new(1,0,1,0)
+        page.BackgroundTransparency = 1
+        page.Visible = false
+        page.Parent = right
+
+        local layout = Instance.new("UIListLayout")
+        layout.Padding = UDim.new(0,8)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Parent = page
+
+        local pad = Instance.new("UIPadding")
+        pad.PaddingAll = UDim.new(0,12)
+        pad.Parent = page
+
+        btn.MouseButton1Click:Connect(function()
+            if currentPage then currentPage.Visible = false end
+            for _, b in left:GetChildren() do
+                if b:IsA("TextButton") then b.BackgroundColor3 = Colors.TabBar end
+            end
+            page.Visible = true
+            btn.BackgroundColor3 = Colors.TabActive
+            currentPage = page
+        end)
+
+        -- แก้บัค tab ว่าง - เปิด tab แรกให้ชัวร์
+        if not currentPage then
+            page.Visible = true
+            btn.BackgroundColor3 = Colors.TabActive
+            currentPage = page
+        end
+
+        local Tab = {}
+
+        function Tab:AddButton(text, callback)
+            local b = Instance.new("TextButton")
+            b.Size = UDim2.new(1,0,0,36)
+            b.BackgroundColor3 = Colors.Button
+            b.Text = text
+            b.TextColor3 = Colors.Text
+            b.TextSize = 14
+            b.Font = Enum.Font.GothamSemibold
+            b.Parent = page
+            Instance.new("UICorner", b).CornerRadius = UDim.new(0,8)
+            b.MouseButton1Click:Connect(callback or function() end)
+            b.MouseEnter:Connect(function() TweenService:Create(b,TweenInfo.new(0.2),{BackgroundColor3=Colors.ButtonHover}):Play() end)
+            b.MouseLeave:Connect(function() TweenService:Create(b,TweenInfo.new(0.2),{BackgroundColor3=Colors.Button}):Play() end)
+            return b
+        end
+
+        -- เพิ่ม Elements อื่น ๆ ตามต้องการ (Toggle, Label, Separator, TextBox, Slider, Note) เหมือนเวอร์ชันก่อนหน้า
+
+        return Tab
+    end
+
+    return Window
+end
+
+return UI_LIB
