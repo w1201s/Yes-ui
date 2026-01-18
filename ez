@@ -1,19 +1,18 @@
 
 local UILib = loadstring(game:HttpGet("https://github.com/w1201s/Yes-ui/raw/refs/heads/main/uno%20ui"))()
 
-local Window = Library:CreateWindow("My UI")
+local Window = UI_LIB:CreateWindow("My Cool UI")
 
--- Tab 1: Toggles
-local Toggles = Window:AddTab("Toggles")
-
-Toggles:AddToggle("Fly", false, function(on)
-    print("Fly is", on and "ON" or "OFF")
+local MainTab = Window:AddTab("Main")
+MainTab:AddButton("Hello World", function()
+    print("Hello from button!")
 end)
 
--- Tab 2: Buttons
-local Buttons = Window:AddTab("Buttons")
+MainTab:AddToggle("Speed Boost", false, function(state)
+    print("Speed boost:", state)
+end)
 
-Buttons:AddButton("Say Hi", function()
-    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0,50,0)
-    print("Teleported!")
+local SettingsTab = Window:AddTab("Settings")
+SettingsTab:AddButton("Reset", function()
+    print("Reset clicked!")
 end)
